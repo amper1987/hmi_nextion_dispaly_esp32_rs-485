@@ -60,6 +60,17 @@ float float_number12;
 float float_number13;
 int i;
 
+// Declare your Nextion objects - Example (page id = 0, component id = 1, component name = "b0") 
+NexButton b0 = NexButton(0, 4, "b0");
+NexButton b1 = NexButton(0, 5 , "b1");
+
+// Register a button object to the touch event list.  
+NexTouch *nex_listen_list[] = {
+  &b0,
+  &b1,
+   NULL
+};
+
 //prototypes declaration
 void parse_data (int index1, int index2, int index3, int index4,
                  int index5, int index6, int index7, int index8,
@@ -67,13 +78,14 @@ void parse_data (int index1, int index2, int index3, int index4,
                  int index13);
 float bytes_to_float ( char *s);
 void send_command (void);
+void hmi_display_data (void);
  
 void setup() {
   Serial.begin(19200);
   Serial1.begin(115200, SERIAL_8N1, RXD1, TXD1);
   Serial2.begin(19200, SERIAL_8N1, RXD2, TXD2);
   pinMode (DE_RE, OUTPUT);
-  //nexInit();
+  nexInit();
 }
 
 void loop()
@@ -86,72 +98,7 @@ void loop()
              number5, number6, number7, number8,
              number9, number10, number11, number12,
              number13);
-  float_number1 = bytes_to_float(buffer1);
-  Serial1.print("t1.txt=\"");
-  Serial1.print(float_number1,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number2 = bytes_to_float(buffer2);
-  Serial1.print("t4.txt=\"");
-  Serial1.print(float_number2,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number3 = bytes_to_float(buffer3);
-  Serial1.print("t7.txt=\"");
-  Serial1.print(float_number3,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number4 = bytes_to_float(buffer4);
-  Serial1.print("t10.txt=\"");
-  Serial1.print(float_number4,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number5 = bytes_to_float(buffer5);
-  Serial1.print("t13.txt=\"");
-  Serial1.print(float_number5,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number6 = bytes_to_float(buffer6);
-  Serial1.print("t23.txt=\"");
-  Serial1.print(float_number6,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number7 = bytes_to_float(buffer7);
-  Serial1.print("t24.txt=\"");
-  Serial1.print(float_number7,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number8 = bytes_to_float(buffer8);
-  Serial1.print("t25.txt=\"");
-  Serial1.print(float_number8,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number9 = bytes_to_float(buffer9);
-  Serial1.print("t26.txt=\"");
-  Serial1.print(float_number9,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number10 = bytes_to_float(buffer10);
-  Serial1.print("t27.txt=\"");
-  Serial1.print(float_number10,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number11 = bytes_to_float(buffer11);
-  Serial1.print("t28.txt=\"");
-  Serial1.print(float_number11,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number12 = bytes_to_float(buffer12);
-  Serial1.print("t29.txt=\"");
-  Serial1.print(float_number12,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  float_number13 = bytes_to_float(buffer13);
-  Serial1.print("t30.txt=\"");
-  Serial1.print(float_number13,2);
-  Serial1.print("\"");
-  Serial1.print("\xFF\xFF\xFF");
-  
+  hmi_display_data();
 }
 //parse data based on the indexes num in the function
 void parse_data (int index1, int index2, int index3, int index4,
@@ -237,4 +184,76 @@ void send_command (void)
  Serial2.flush(); // wait the TX buffer is empty, transmission is complete
  delay(1);
  digitalWrite(DE_RE, LOW); // set DE and RE to active LOW RX mode
+}
+
+void hmi_display_data (void)
+{
+  
+    nexLoop(nex_listen_list);
+    float_number1 = bytes_to_float(buffer1);
+    Serial1.print("t1.txt=\"");
+    Serial1.print(float_number1,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number2 = bytes_to_float(buffer2);
+    Serial1.print("t4.txt=\"");
+    Serial1.print(float_number2,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number3 = bytes_to_float(buffer3);
+    Serial1.print("t7.txt=\"");
+    Serial1.print(float_number3,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number4 = bytes_to_float(buffer4);
+    Serial1.print("t10.txt=\"");
+    Serial1.print(float_number4,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number5 = bytes_to_float(buffer5);
+    Serial1.print("t13.txt=\"");
+    Serial1.print(float_number5,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number6 = bytes_to_float(buffer6);
+    Serial1.print("t23.txt=\"");
+    Serial1.print(float_number6,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number7 = bytes_to_float(buffer7);
+    Serial1.print("t24.txt=\"");
+    Serial1.print(float_number7,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number8 = bytes_to_float(buffer8);
+    Serial1.print("t25.txt=\"");
+    Serial1.print(float_number8,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number9 = bytes_to_float(buffer9);
+    Serial1.print("t26.txt=\"");
+    Serial1.print(float_number9,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number10 = bytes_to_float(buffer10);
+    Serial1.print("t27.txt=\"");
+    Serial1.print(float_number10,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number11 = bytes_to_float(buffer11);
+    Serial1.print("t28.txt=\"");
+    Serial1.print(float_number11,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number12 = bytes_to_float(buffer12);
+    Serial1.print("t29.txt=\"");
+    Serial1.print(float_number12,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+    float_number13 = bytes_to_float(buffer13);
+    Serial1.print("t30.txt=\"");
+    Serial1.print(float_number13,2);
+    Serial1.print("\"");
+    Serial1.print("\xFF\xFF\xFF");
+  
 }

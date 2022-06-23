@@ -13,11 +13,14 @@
 #define TXD2 17
 #define RXD1 9
 #define TXD1 10
-#define DE_RE 18  
+#define DE_RE 18
+#define CHARGER_SIZE 256 
 
+uint32_t ten_second_timeout_flag = 0;
+hw_timer_t * timer = NULL;
 uint16_t length = 0x0001;
 uint8_t xmit_byte; 
-char array[200];
+char array[CHARGER_SIZE];
 char buffer1[10];
 char buffer2[10];
 char buffer3[10];
@@ -60,16 +63,10 @@ float float_number12;
 float float_number13;
 int i;
 
-// Declare your Nextion objects - Example (page id = 0, component id = 1, component name = "b0") 
-NexButton b0 = NexButton(0, 4, "b0");
-NexButton b1 = NexButton(0, 5 , "b1");
-
-// Register a button object to the touch event list.  
-NexTouch *nex_listen_list[] = {
-  &b0,
-  &b1,
-   NULL
-};
+void IRAM_ATTR onTimer()
+{
+  ten_second_timeout_flag = 1;
+}
 
 //prototypes declaration
 void parse_data (int index1, int index2, int index3, int index4,
@@ -80,17 +77,23 @@ float bytes_to_float ( char *s);
 void send_command (void);
 void hmi_display_data (void);
  
-void setup() {
-  Serial.begin(19200);
+void setup() 
+{
+  Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, RXD1, TXD1);
   Serial2.begin(19200, SERIAL_8N1, RXD2, TXD2);
   pinMode (DE_RE, OUTPUT);
   nexInit();
+  timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(timer, &onTimer, true);
+  timerAlarmWrite(timer, 10000000, true);
+  timerAlarmEnable(timer);
 }
 
 void loop()
 {
-  delay(1000);
+  if(ten_second_timeout_flag)
+  {
   digitalWrite(DE_RE, HIGH); // set DE and RE to active HIGH TX mode
   send_command(); 
   delay(5);
@@ -98,43 +101,36 @@ void loop()
              number5, number6, number7, number8,
              number9, number10, number11, number12,
              number13);
+  Serial.write(buffer1, 4);
   hmi_display_data();
-}
+  memset(buffer1,0,sizeof(buffer1));
+  memset(array,0,sizeof(array));
+  ten_second_timeout_flag = 0;
+  }
+} 
 //parse data based on the indexes num in the function
 void parse_data (int index1, int index2, int index3, int index4,
                  int index5, int index6, int index7, int index8,
                  int index9, int index10, int index11, int index12,
                  int index13)
 {
-  if(Serial2.available() > 2) 
+  if(Serial2.available())
   {
     for (i = 0; i<sizeof(array); i++)
     {
     array[i] = Serial2.read();
     }
-    if ((array[0] == 0xFE) && (array[2] == 0x38))
+      if ((array[0] == 0xFE) && (array[2] == 0x38))
      { 
       strlen (ptr = ptr+=index1);//advance pointer by index1 value in array
       memcpy (buffer1, ptr, 4);//copy 4 bytes of array to buffer1
       strlen (ptr = ptr-=index1);//subtract pointer by index1 value in array
-      strlen (ptr = ptr+=index2);//advance pointer by index2 value in array
-      memcpy (buffer2, ptr, 4);//copy 4 bytes of array to buffer2
-      strlen (ptr = ptr-=index2);//subtract pointer by index2 value in array
-      strlen (ptr = ptr+=index3);//advance pointer by index3 value in array
-      memcpy (buffer3, ptr, 4);//copy 4 bytes of array to buffer3
-      strlen (ptr = ptr-=index3);//subtract pointer by index3 value in array
       strlen (ptr = ptr+=index4);//advance pointer by index4 value in array
       memcpy (buffer4, ptr, 4);//copy 4 bytes of array to buffer4
       strlen (ptr = ptr-=index4);//subtract pointer by index4 value in array
       strlen (ptr = ptr+=index5);//advance pointer by index5 value in array
       memcpy (buffer5, ptr, 4);//copy 4 bytes of array to buffer5
       strlen (ptr = ptr-=index5);//subtract pointer by index5 value in array
-      strlen (ptr = ptr+=index6);//advance pointer by index6 value in array
-      memcpy (buffer6, ptr, 4);//copy 4 bytes of array to buffer6
-      strlen (ptr = ptr-=index6);//subtract pointer by index6 value in array
-      strlen (ptr = ptr+=index7);//advance pointer by index7 value in array
-      memcpy (buffer7, ptr, 4);//copy 4 bytes of array to buffer7
-      strlen (ptr = ptr-=index7);//subtract pointer by index7 value in array
       strlen (ptr = ptr+=index8);//advance pointer by index8 value in array
       memcpy (buffer8, ptr, 4);//copy 4 bytes of array to buffer8
       strlen (ptr = ptr-=index8);//subtract pointer by index8 value in array
@@ -153,24 +149,27 @@ void parse_data (int index1, int index2, int index3, int index4,
       strlen (ptr = ptr+=index13);//advance pointer by index13 value in array
       memcpy (buffer13, ptr, 4);//copy 4 bytes of array to buffer13
       strlen (ptr = ptr-=index13);//subtract pointer by index13 value in array
-      }
-    }     
-  }
+    }
+  }     
+}
+
 /*This function saves the buffer contain inside the union
 //with the respective float representaion of 4 x bytes of the buffer
 and then return float_Value back to the main loop*/
 float bytes_to_float ( char *s)
 {
-   union {
-        char temp_array[4];
-        float float_variable;
-    } float_Value;
-    float_Value.temp_array[3] = s[0];
-    float_Value.temp_array[2] = s[1];
-    float_Value.temp_array[1] = s[2];
-    float_Value.temp_array[0] = s[3];
-    return float_Value.float_variable; 
+  union
+  {
+  char temp_array[4];
+  float float_variable;
+  } float_Value;
+  float_Value.temp_array[3] = s[0];
+  float_Value.temp_array[2] = s[1];
+  float_Value.temp_array[1] = s[2];
+  float_Value.temp_array[0] = s[3];
+  return float_Value.float_variable; 
 }
+
 /*Send command to the charger controller to take and then retrieve data 
 from it*/ 
 void send_command (void)
@@ -186,74 +185,97 @@ void send_command (void)
  digitalWrite(DE_RE, LOW); // set DE and RE to active LOW RX mode
 }
 
+// Send command to the HMI with all the buffers corresponding to
+// the float values
 void hmi_display_data (void)
 {
-  
-    nexLoop(nex_listen_list);
-    float_number1 = bytes_to_float(buffer1);
-    Serial1.print("t1.txt=\"");
-    Serial1.print(float_number1,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number2 = bytes_to_float(buffer2);
-    Serial1.print("t4.txt=\"");
-    Serial1.print(float_number2,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number3 = bytes_to_float(buffer3);
-    Serial1.print("t7.txt=\"");
-    Serial1.print(float_number3,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number4 = bytes_to_float(buffer4);
-    Serial1.print("t10.txt=\"");
-    Serial1.print(float_number4,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number5 = bytes_to_float(buffer5);
-    Serial1.print("t13.txt=\"");
-    Serial1.print(float_number5,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number6 = bytes_to_float(buffer6);
-    Serial1.print("t23.txt=\"");
-    Serial1.print(float_number6,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number7 = bytes_to_float(buffer7);
-    Serial1.print("t24.txt=\"");
-    Serial1.print(float_number7,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number8 = bytes_to_float(buffer8);
-    Serial1.print("t25.txt=\"");
-    Serial1.print(float_number8,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number9 = bytes_to_float(buffer9);
-    Serial1.print("t26.txt=\"");
-    Serial1.print(float_number9,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number10 = bytes_to_float(buffer10);
-    Serial1.print("t27.txt=\"");
-    Serial1.print(float_number10,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number11 = bytes_to_float(buffer11);
-    Serial1.print("t28.txt=\"");
-    Serial1.print(float_number11,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number12 = bytes_to_float(buffer12);
-    Serial1.print("t29.txt=\"");
-    Serial1.print(float_number12,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-    float_number13 = bytes_to_float(buffer13);
-    Serial1.print("t30.txt=\"");
-    Serial1.print(float_number13,2);
-    Serial1.print("\"");
-    Serial1.print("\xFF\xFF\xFF");
-  
+float_number1 = bytes_to_float(buffer1);
+Serial1.print("t1.txt=\"");
+Serial1.print(float_number1,1);
+Serial1.print("\"");
+Serial1.print("\xFF\xFF\xFF");
+float_number4 = bytes_to_float(buffer4);
+Serial1.print("t10.txt=\"");
+Serial1.print(float_number4,1);
+Serial1.print("\"");
+Serial1.print("\xFF\xFF\xFF");
+float_number5 = bytes_to_float(buffer5);
+Serial1.print("t13.txt=\"");
+Serial1.print(float_number5,1);
+Serial1.print("\"");
+Serial1.print("\xFF\xFF\xFF");
+float_number8 = bytes_to_float(buffer8);
+Serial1.print("t25.txt=\"");
+Serial1.print(float_number8,1);
+Serial1.print("\"");
+Serial1.print("\xFF\xFF\xFF");
+float_number9 = bytes_to_float(buffer9);
+Serial1.print("t26.txt=\"");
+Serial1.print(float_number9,1);
+Serial1.print("\"");
+Serial1.print("\xFF\xFF\xFF");
+float_number10 = bytes_to_float(buffer10);
+float_number10 = float_number10/10.0;
+  if (float_number10 != -100.0)
+  {
+  Serial1.print("t27.txt=\"");
+  Serial1.print(float_number10,1);
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  else
+  {
+  Serial1.print("t27.txt=\"");
+  Serial1.print("");
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  float_number11 = bytes_to_float(buffer11);
+  float_number11 = float_number11/10.0;
+  if (float_number11 != -100.0)
+  {
+  Serial1.print("t28.txt=\"");
+  Serial1.print(float_number11,1);
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  else
+  {
+  Serial1.print("t28.txt=\"");
+  Serial1.print("");
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  float_number12 = bytes_to_float(buffer12);
+  float_number12 = float_number12/10.0;
+  if (float_number12 != -100.0)
+  {
+  Serial1.print("t29.txt=\"");
+  Serial1.print(float_number12,1);
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  else
+  {
+  Serial1.print("t29.txt=\"");
+  Serial1.print("");
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  float_number13 = bytes_to_float(buffer13);
+  float_number13 = float_number13/10.0;
+  if (float_number13 != -100.0)
+  {
+  Serial1.print("t30.txt=\"");
+  Serial1.print(float_number13,1);
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
+  else
+  {
+  Serial1.print("t30.txt=\"");
+  Serial1.print("");
+  Serial1.print("\"");
+  Serial1.print("\xFF\xFF\xFF");
+  }
 }

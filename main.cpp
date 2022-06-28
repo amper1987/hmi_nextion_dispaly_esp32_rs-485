@@ -72,7 +72,6 @@ float temperature_sensor_1;
 float temperature_sensor_2;
 float temperature_sensor_3;
 
-
 void IRAM_ATTR onTimer()
 {
   ten_second_timeout_flag = 1;
